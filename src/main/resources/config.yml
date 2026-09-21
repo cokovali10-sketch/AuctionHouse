@@ -1,0 +1,57 @@
+# AuctionHouse v1.0.0 - Purpur/Paper 1.21.11
+# Economy: Vault + EssentialsX (1 diamond ~ 1000$ on your server)
+general:
+  # prefix in chat (supports color codes with &)
+  prefix: "&8[&6Auction&eHouse&8] "
+  language: ru
+  # check expired listings every N minutes
+  expire-check-minutes: 5
+  # notify seller on buy (true/false)
+  sold-message: true
+  # announce expensive listings? 0 = disabled
+  announce-min-price: 0.0
+
+economy:
+  # 10% commission from seller on successful sale
+  tax-percent: 10.0
+  # min/max price (with your inflation: diamond ~1000$)
+  min-price: 1.0
+  max-price: 100000000.0
+  # currency symbol for GUI/messages
+  symbol: "$"
+
+listings:
+  # max active listings per player (100 slots as requested)
+  max-per-player: 100
+  # lifetime of each listing in seconds: 7 days = 604800
+  duration-seconds: 604800
+  # allow selling damaged items? shulkers with items? (anti-dupe safe: true)
+  allow-damaged: true
+  # blocked materials (one per line, e.g. BEDROCK, COMMAND_BLOCK)
+  blocked:
+    - BEDROCK
+    - BARRIER
+    - COMMAND_BLOCK
+    - STRUCTURE_BLOCK
+  # worlds where /ah sell is denied (e.g. pvp_world). Empty = everywhere allowed.
+  blocked-worlds: []
+
+gui:
+  title-main: "&8Auction &7- page &e{page}"
+  title-confirm: "&8Confirm purchase"
+  title-mylots: "&8My listings &7({count}/{max})"
+  title-expired: "&8Expired / Storage"
+  # sort modes cycled by button: NEWEST, PRICE_ASC, PRICE_DESC, TIME_LEFT
+  default-sort: NEWEST
+  # filler glass pane material
+  filler: GRAY_STAINED_GLASS_PANE
+  # UI sounds (UI clicks, levelup on buy, villager on sell)
+  sounds: true
+  # default category filter: ALL, BLOCKS, TOOLS, WEAPONS, ARMOR, FOOD, POTIONS, ENCHANTED, MISC
+  default-category: ALL
+
+storage:
+  # YAML file storage: plugins/AuctionHouse/listings.yml (no MySQL needed on Gamely)
+  file: listings.yml
+  # autosave every N minutes
+  autosave-minutes: 10

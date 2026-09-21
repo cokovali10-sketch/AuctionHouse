@@ -1,0 +1,24 @@
+name: AuctionHouse
+version: ${version}
+main: com.vitalis.ah.AuctionHouse
+api-version: "1.21"
+author: Vitalis
+description: Top Auction House for Purpur/Paper 1.21.11 - GUI, search, tax, expiry.
+website: https://github.com/cokovali10-sketch/Vitalis
+depend: [Vault]
+softdepend: [Essentials, PlaceholderAPI]
+commands:
+  ah:
+    description: Auction House - open, sell, search. Everything else is GUI buttons.
+    usage: /ah [sell <price>|search <text>]
+    aliases: [auction, auctionhouse, auc]
+permissions:
+  auctionhouse.use:
+    description: Use /ah
+    default: true
+  auctionhouse.sell:
+    description: Sell items
+    default: true
+  auctionhouse.search:
+    description: Search listings
+    default: true

@@ -1,0 +1,17 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        mavenCentral()
+        maven { url = "https://repo.papermc.io/repository/maven-public/" }
+        maven { url = "https://jitpack.io" }
+        maven { url = "https://repo.extendedclip.com/content/repositories/placeholderapi/" }
+    }
+}
+
+rootProject.name = "auctionhouse"
