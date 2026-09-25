@@ -2,7 +2,7 @@ package com.vitalis.ah;
 
 import com.vitalis.ah.command.AhCommand;
 import com.vitalis.ah.config.AhConfig;
-import com.vitalis.ah.economy.EconomyHook;
+import com.vitalis.ah.economy.EconomyBridge;
 import com.vitalis.ah.gui.AhGui;
 import com.vitalis.ah.listener.GuiListener;
 import com.vitalis.ah.storage.YamlStorage;
@@ -17,7 +17,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class AuctionHouse extends JavaPlugin {
     private final AhConfig cfg = new AhConfig();
     private YamlStorage storage;
-    private final EconomyHook economy = new EconomyHook(this);
+    private final EconomyBridge economy = new EconomyBridge(this);
     private AhGui gui;
 
     @Override
@@ -28,10 +28,11 @@ public class AuctionHouse extends JavaPlugin {
         gui = new AhGui(cfg, storage);
 
         if (!economy.setup()) {
-            getLogger().severe("Vault + economy provider not found! Install Vault and EssentialsX.");
+            getLogger().severe("No economy found (Vault or Essentials)! Auction needs money to work.");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
+        getLogger().info("Economy hooked via " + economy.mode() + ".");
         gui.setEconomy(economy);
 
         AhCommand cmd = new AhCommand(this);
@@ -73,7 +74,7 @@ public class AuctionHouse extends JavaPlugin {
         return storage;
     }
 
-    public EconomyHook economy() {
+    public EconomyBridge economy() {
         return economy;
     }
 

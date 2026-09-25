@@ -1,7 +1,7 @@
 package com.vitalis.ah.gui;
 
 import com.vitalis.ah.config.AhConfig;
-import com.vitalis.ah.economy.EconomyHook;
+import com.vitalis.ah.economy.EconomyBridge;
 import com.vitalis.ah.model.Listing;
 import com.vitalis.ah.storage.YamlStorage;
 import com.vitalis.ah.util.Fmt;
@@ -38,7 +38,7 @@ public class AhGui {
 
     private final AhConfig cfg;
     private final YamlStorage storage;
-    private EconomyHook economy;
+    private EconomyBridge economy;
 
     /** viewer -> current browser state */
     private final Map<UUID, State> states = new HashMap<>();
@@ -55,14 +55,14 @@ public class AhGui {
     }
 
     /** Called by main after Vault hooks up (economy may be null in GUI before that). */
-    public void setEconomy(EconomyHook economy) {
+    public void setEconomy(EconomyBridge economy) {
         this.economy = economy;
     }
 
     private String balanceOf(Player p) {
-        if (economy == null || economy.get() == null) return "?";
+        if (economy == null || !economy.ready()) return "?";
         try {
-            return Fmt.money(economy.get().getBalance(p), cfg.symbol);
+            return Fmt.money(economy.balance(p), cfg.symbol);
         } catch (Exception e) {
             return "?";
         }
