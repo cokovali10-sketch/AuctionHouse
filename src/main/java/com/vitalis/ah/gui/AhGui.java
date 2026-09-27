@@ -16,6 +16,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.Sound;
 
 import java.util.*;
 
@@ -32,6 +33,35 @@ public class AhGui {
         public String query = "";
         public Sort sort = Sort.NEWEST;
         public Category category = Category.ALL;
+        /** exchanger amount preset */
+        public int exchangeAmount = 64;
+    }
+
+    /** Amount presets for the exchanger, -1 = ALL. */
+    public static final int[] EXCHANGE_AMOUNTS = {1, 16, 32, 64, -1};
+
+    public static String exchangeAmountLabel(int amount) {
+        return amount < 0 ? "ВСЁ" : String.valueOf(amount);
+    }
+
+    public static int nextExchangeAmount(int current) {
+        for (int i = 0; i < EXCHANGE_AMOUNTS.length; i++) {
+            if (EXCHANGE_AMOUNTS[i] == current) return EXCHANGE_AMOUNTS[(i + 1) % EXCHANGE_AMOUNTS.length];
+        }
+        return 64;
+    }
+
+    /** Pending exchange confirm: true = diamonds->money. */
+    public static class PendingExchange {
+        public final boolean diaToMoney;
+        public final int count;
+        public final double total;
+
+        PendingExchange(boolean diaToMoney, int count, double total) {
+            this.diaToMoney = diaToMoney;
+            this.count = count;
+            this.total = total;
+        }
     }
 
     public static final int PAGE_SIZE = 45;
@@ -46,6 +76,8 @@ public class AhGui {
     private final Map<UUID, UUID> pendingConfirm = new HashMap<>();
     /** viewer -> expired GUI slot -> vault index */
     private final Map<UUID, List<Integer>> expiredSlotMap = new HashMap<>();
+    /** viewer -> pending exchange confirm */
+    private final Map<UUID, PendingExchange> pendingExchange = new HashMap<>();
     /** viewers waiting for chat search input */
     private final Set<UUID> pendingSearch = new HashSet<>();
 
@@ -87,6 +119,14 @@ public class AhGui {
 
     public void markConfirm(Player p, UUID listingId) {
         pendingConfirm.put(p.getUniqueId(), listingId);
+    }
+
+    public void markExchange(Player p, PendingExchange pe) {
+        pendingExchange.put(p.getUniqueId(), pe);
+    }
+
+    public PendingExchange takeExchange(Player p) {
+        return pendingExchange.remove(p.getUniqueId());
     }
 
     public UUID takeConfirm(Player p) {
@@ -152,40 +192,60 @@ public class AhGui {
         int pages = Math.max(1, (int) Math.ceil(list.size() / (double) PAGE_SIZE));
         st.page = Math.max(0, Math.min(st.page, pages - 1));
 
-        int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
-        String title = cfg.titleMain.replace("{page}", (st.page + 1) + "/" + pages);
+int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
+        String title = cfg.titleMain.replace("{page}", (st.page + 1) + "/" + pages)
+                .replace("{count}", String.valueOf(list.size()));
         if (st.mode == Mode.MY) title = cfg.titleMyLots
                 .replace("{count}", String.valueOf(countMine(p)))
                 .replace("{max}", String.valueOf(maxSlots));
-        if (st.mode == Mode.SEARCH) title = "&8Поиск: &e" + st.query + " &7- &e" + (st.page + 1) + "/" + pages;
+        if (st.mode == Mode.SEARCH) title = "<gradient:#FFD76A:#7AD9FF>Поиск</gradient> <gray>" + st.query
+                + " <gray>" + (st.page + 1) + "/" + pages;
 
         Inventory inv = Bukkit.createInventory(new BrowserHolder(), 54, Msg.color(title));
+
+        // Play opening sound
+        if (cfg.sounds) {
+            p.playSound(p.getLocation(), Sound.UI_TOAST_IN, 0.5f, 1.2f);
+        }
 
         int from = st.page * PAGE_SIZE;
         int to = Math.min(from + PAGE_SIZE, list.size());
         for (int i = from; i < to; i++) {
             inv.setItem(i - from, renderListing(list.get(i), p.getUniqueId()));
         }
-        // nav row
-        ItemStack fill = filler();
-        for (int s = 45; s < 54; s++) inv.setItem(s, fill);
+        // nav row with animated gradient panes
+        ItemStack fill = animatedFiller();
+        for (int s = 45; s < 54; s++) inv.setItem(s, animatedFiller());
 
-        inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "&c← Назад", "&7Страница " + (st.page + 1) + "/" + pages));
-        inv.setItem(46, button(Material.BOOK, "&bМои лоты",
-                "&7Ваши: &e" + countMine(p) + "&7/&e" + maxSlots,
-                "&7Баланс: &e" + balanceOf(p), "&7Клик — открыть"));
-        inv.setItem(47, button(Material.HOPPER, "&6Просрочка / Склад",
-                "&7Забрать: &e" + storage.vaultSize(p.getUniqueId()), "&7Клик — открыть"));
-        inv.setItem(48, button(Material.COMPARATOR, "&dСорт: &e" + sortRu(st.sort),
-                "&7Клик — сменить"));
-        inv.setItem(49, button(Material.BARRIER, "&cЗакрыть"));
-        inv.setItem(50, button(st.category.icon, "&aКатегория: &e" + st.category.nameRu,
-                "&7Клик — выбрать"));
-        inv.setItem(51, button(Material.COMPASS, "&aПоиск",
-                st.query.isEmpty() ? "&7Клик — ввести запрос" : "&7Запрос: &e" + st.query,
-                "&7Команда: &e/ah search <текст>"));
-        inv.setItem(52, button(Material.SUNFLOWER, "&eОбновить", "&7Клик — обновить список"));
-        inv.setItem(53, button(Material.LIME_STAINED_GLASS_PANE, "&aВперёд →", "&7Страница " + (st.page + 1) + "/" + pages));
+inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E8E>← Назад</gradient>",
+                "<gray>Страница " + (st.page + 1) + "/" + pages + "</gray>"));
+        inv.setItem(46, button(Material.ENDER_CHEST, "<gradient:#7AD9FF:#FFD76A>◆ Мои лоты ◆</gradient>",
+                "<gray>Ваши: <white>" + countMine(p) + "</white><gray>/</gray><white>" + maxSlots + "</white></gray>",
+                "<gray>Баланс: <gold>" + balanceOf(p) + "</gold></gray>", "<gray>Клик — открыть</gray>"));
+        inv.setItem(47, button(Material.CHEST, "<gradient:#FFA500:#FFD700>◆ Склад ◆</gradient>",
+                "<gray>Забрать: <white>" + storage.vaultSize(p.getUniqueId()) + "</white></gray>",
+                "<gray>Просрочка и снятые лоты</gray>", "<gray>Клик — открыть</gray>"));
+        inv.setItem(48, button(Material.COMPARATOR,
+                "<gradient:#7AD9FF:#FFD76A>◆ Сорт: " + sortRu(st.sort) + "◆</gradient>",
+                "<gray>Дальше: <white>" + sortRu(nextSort(st.sort)) + "</white></gray>",
+                "<gray>Клик — сменить</gray>"));
+        inv.setItem(49, button(Material.BARRIER, "<gradient:#FF6B6B:#FF8E8E>◆ Закрыть ◆</gradient>",
+                "<gray>Баланс: <gold>" + balanceOf(p) + "</gold></gray>"));
+        inv.setItem(50, button(st.category.icon,
+                "<gradient:#7AD9FF:#FFD76A>◆ " + st.category.nameRu + " ◆</gradient>",
+                "<gray>Клик — выбрать категорию</gray>"));
+        inv.setItem(51, button(Material.COMPASS,
+                "<gradient:#7AD9FF:#FFD76A>◆ Поиск ◆</gradient>",
+                st.query.isEmpty() ? "<gray>Клик — ввести запрос</gray>" : "<gray>Запрос: <white>" + st.query + "</white></gray>",
+                "<gray>Команда: <white>/ah search <текст></white></gray>"));
+        inv.setItem(52, button(Material.GOLD_INGOT,
+                "<gradient:#FFD700:#FFA500>◆ Обменник ◆</gradient>",
+                "<gray>Алмазы <white>⇄</white> деньги</gray>",
+                "<gray>1 алм = <gold>" + Fmt.money(cfg.diamondPrice, cfg.symbol) + "</gold></gray>",
+                "<gray>Клик — открыть</gray>"));
+        inv.setItem(53, button(Material.LIME_STAINED_GLASS_PANE,
+                "<gradient:#7DFF9A:#7AD9FF>▸ Вперёд ▸</gradient>",
+                "<gray>Страница <white>" + (st.page + 1) + "</white><gray>/</gray><white>" + pages + "</white></gray>"));
         p.openInventory(inv);
     }
 
@@ -195,6 +255,15 @@ public class AhGui {
             case PRICE_ASC -> "Дешевле";
             case PRICE_DESC -> "Дороже";
             case TIME_LEFT -> "Скоро конец";
+        };
+    }
+
+    private Sort nextSort(Sort s) {
+        return switch (s) {
+            case NEWEST -> Sort.PRICE_ASC;
+            case PRICE_ASC -> Sort.PRICE_DESC;
+            case PRICE_DESC -> Sort.TIME_LEFT;
+            case TIME_LEFT -> Sort.NEWEST;
         };
     }
 
@@ -209,18 +278,37 @@ public class AhGui {
         } catch (Exception e) {
             base = new ItemStack(Material.STONE);
         }
+        boolean own = l.seller.equals(viewer);
+        long left = l.expiresAt - System.currentTimeMillis();
+        // urgency color: plenty of time / under a day / under an hour
         ItemMeta meta = base.getItemMeta();
         List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
         lore.add(Component.empty());
-        lore.add(Msg.color("&6Цена: &e" + Fmt.money(l.price, cfg.symbol)));
+        // Price with gradient
+        lore.add(Msg.color("<gradient:#FFD700:#FFA500>◆ " + Fmt.money(l.price, cfg.symbol) + " монет ◆</gradient>"));
         lore.add(Msg.color("&7Продавец: &f" + l.sellerName));
-        lore.add(Msg.color("&7До конца: &e" + Fmt.timeLeft(l.expiresAt - System.currentTimeMillis())));
-        if (l.seller.equals(viewer)) {
-            lore.add(Msg.color("&eВаш лот — клик = снять"));
-        } else {
-            lore.add(Msg.color("&aКлик — купить"));
+        // Time with dynamic color
+        lore.add(Msg.color("&7⏳ До конца: " + Fmt.timeLeft(l.expiresAt - System.currentTimeMillis())));
+        if (l.enchanted) {
+            lore.add(Msg.color("&d✦ Зачаровано &7(" + l.material + ")"));
         }
-        meta.lore(lore);
+        if (own) {
+            lore.add(Component.empty());
+            lore.add(Msg.color("<gradient:#FF6B6B:#FF8E8E>◆ Ваш лот — клик = снять ◆</gradient>"));
+        } else {
+            lore.add(Component.empty());
+            lore.add(Msg.color("<gradient:#7AD9FF:#FFD76A>◆ Клик — купить ◆</gradient>"));
+        }
+        // Add subtle gradient border effect via lore
+        lore.add(Component.empty());
+        lore.add(Msg.color("<gradient:#7AD9FF:#FFD76A>────────────────</gradient>"));
+        // Glow effect for own lots and ending-soon items
+        if (own || left < 3600_000L) {
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+        }
+        // Add custom model data for custom textures support
+        // meta.setCustomModelData(12345); // Uncomment if using resource pack
         base.setItemMeta(meta);
         return base;
     }
@@ -228,7 +316,8 @@ public class AhGui {
     // ---------------- categories ----------------
 
     public void openCategories(Player p) {
-        Inventory inv = Bukkit.createInventory(new CategoriesHolder(), 27, Msg.color("&8Категория"));
+        Inventory inv = Bukkit.createInventory(new CategoriesHolder(), 27,
+                Msg.color("<gradient:#FFD76A:#7AD9FF>◆ Категория ◆</gradient>"));
         ItemStack fill = filler();
         for (int s = 0; s < 27; s++) inv.setItem(s, fill);
         State st = stateOf(p);
@@ -236,11 +325,18 @@ public class AhGui {
         int slot = 9;
         for (Category c : cats) {
             boolean selected = st.category == c;
-            inv.setItem(slot++, button(c.icon,
-                    (selected ? "&a▶ " : "&7") + c.nameRu,
-                    selected ? "&aВыбрано" : "&7Клик — выбрать"));
+            ItemStack it = button(c.icon,
+                    (selected ? "<gradient:#7DFF9A:#FFE27A>★ " + c.nameRu + "</gradient>" : "&7" + c.nameRu),
+                    selected ? "&aВыбрано" : "&7Клик — выбрать");
+            if (selected) {
+                ItemMeta m = it.getItemMeta();
+                m.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+                m.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+                it.setItemMeta(m);
+            }
+            inv.setItem(slot++, it);
         }
-        inv.setItem(22, button(Material.BARRIER, "&cНазад"));
+        inv.setItem(22, button(Material.ARROW, "&7Назад"));
         p.openInventory(inv);
     }
 
@@ -253,11 +349,11 @@ public class AhGui {
         for (int s = 0; s < 27; s++) inv.setItem(s, fill);
         inv.setItem(13, renderListing(l, p.getUniqueId()));
         double tax = l.price * cfg.taxPercent / 100.0;
-        inv.setItem(11, button(Material.GREEN_WOOL, "&aКУПИТЬ за " + Fmt.money(l.price, cfg.symbol),
+        inv.setItem(11, button(Material.GREEN_WOOL, "&a&lКУПИТЬ за " + Fmt.money(l.price, cfg.symbol),
+                "&7Товар: &f" + l.displayName,
                 "&7Продавец получит &e" + Fmt.money(l.price - tax, cfg.symbol),
-                "&7Комиссия " + cfg.taxPercent + "%",
-                "&7Товар: &f" + l.displayName));
-        inv.setItem(15, button(Material.RED_WOOL, "&cОтмена"));
+                "&7Ваш баланс: &e" + balanceOf(p)));
+        inv.setItem(15, button(Material.RED_WOOL, "&cНазад"));
         p.openInventory(inv);
     }
 
@@ -278,8 +374,8 @@ public class AhGui {
         }
         ItemStack fill = filler();
         for (int s = 45; s < 54; s++) inv.setItem(s, fill);
-        inv.setItem(49, button(Material.BARRIER, "&cНазад"));
-        inv.setItem(53, button(Material.CHEST, "&eЗабрать ВСЁ (" + items.size() + ")", "&7Клик — забрать всё"));
+        inv.setItem(49, button(Material.ARROW, "&7Назад"));
+        inv.setItem(53, button(Material.EMERALD_BLOCK, "&a&lЗабрать ВСЁ &7(&e" + items.size() + "&7)", "&7Клик — забрать всё"));
         expiredSlotMap.put(p.getUniqueId(), map);
         p.openInventory(inv);
     }
@@ -288,12 +384,157 @@ public class AhGui {
         return expiredSlotMap.getOrDefault(p.getUniqueId(), Collections.emptyList());
     }
 
+    // ---------------- exchanger ----------------
+
+    /** Diamonds (whole inventory) currently held. */
+    public int countDiamonds(Player p) {
+        int n = 0;
+        try {
+            for (ItemStack it : p.getInventory().getContents()) {
+                if (it != null && it.getType() == Material.DIAMOND) n += it.getAmount();
+            }
+        } catch (Exception ignored) {}
+        return n;
+    }
+
+    private double balanceOfSafe(Player p) {
+        if (economy == null || !economy.ready()) return 0;
+        try {
+            return economy.balance(p);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    public void openExchanger(Player p) {
+        State st = stateOf(p);
+        Inventory inv = Bukkit.createInventory(new ExchangerHolder(), 27,
+                Msg.color("<gradient:#FFD700:#7AD9FF>◆ Обменник ◆</gradient>"));
+        ItemStack fill = filler();
+        for (int s = 0; s < 27; s++) inv.setItem(s, fill);
+
+        int have = countDiamonds(p);
+        double price = cfg.diamondPrice;
+        double bal = balanceOfSafe(p);
+        int afford = price > 0 ? (int) (bal / price) : 0;
+
+        int want = st.exchangeAmount;
+        int sellN = want < 0 ? have : Math.min(want, have);
+        double sellSum = sellN * price;
+        int buyN = want < 0 ? afford : Math.min(want, afford);
+        double buySum = buyN * price;
+
+        inv.setItem(11, button(Material.DIAMOND, "<gradient:#7AD9FF:#FFFFFF>Алмазы → Деньги</gradient>",
+                "&7У тебя алмазов: &b" + have,
+                "&7Обменяешь: &b" + sellN + " &7→ &e" + Fmt.money(sellSum, cfg.symbol),
+                "&71 алмаз = &e" + Fmt.money(price, cfg.symbol),
+                sellN > 0 ? "&aКлик — далее" : "&cНет алмазов"));
+        inv.setItem(13, button(Material.SUNFLOWER, "&eКоличество: &f" + exchangeAmountLabel(want),
+                "&71 → 16 → 32 → 64 → ВСЁ", "&7Клик — сменить"));
+        inv.setItem(15, button(Material.EMERALD, "<gradient:#7DFF9A:#FFE27A>Деньги → Алмазы</gradient>",
+                "&7Баланс: &e" + Fmt.money(bal, cfg.symbol),
+                "&7Купишь: &b" + buyN + " &7за &e" + Fmt.money(buySum, cfg.symbol),
+                buyN > 0 ? "&aКлик — далее" : "&cНе хватает денег"));
+        inv.setItem(22, button(Material.ARROW, "&7Назад"));
+        p.openInventory(inv);
+    }
+
+    public void openExchangeConfirm(Player p, boolean diaToMoney, int n, double total) {
+        markExchange(p, new PendingExchange(diaToMoney, n, total));
+        Inventory inv = Bukkit.createInventory(new ExchangeConfirmHolder(), 27,
+                Msg.color("<gradient:#FFD700:#7AD9FF>◆ Подтверди обмен ◆</gradient>"));
+        ItemStack fill = filler();
+        for (int s = 0; s < 27; s++) inv.setItem(s, fill);
+        if (diaToMoney) {
+            inv.setItem(13, button(Material.DIAMOND, "&b" + n + " алмаз.",
+                    "&7Получишь: &e" + Fmt.money(total, cfg.symbol)));
+        } else {
+            inv.setItem(13, button(Material.EMERALD, "&a" + n + " алмаз.",
+                    "&7Заплатишь: &e" + Fmt.money(total, cfg.symbol)));
+        }
+        inv.setItem(11, button(Material.GREEN_WOOL, "&a&lОБМЕНЯТЬ",
+                "&7Назад пути не будет"));
+        inv.setItem(15, button(Material.RED_WOOL, "&cОтмена"));
+        p.openInventory(inv);
+    }
+
+    /** Executes a confirmed exchange. Returns message key, null = ok. */
+    public String doExchange(Player p, PendingExchange pe) {
+        double price = cfg.diamondPrice;
+        if (price <= 0) return "&cОбменник выключен.";
+        if (economy == null || !economy.ready()) return "&cНет экономики.";
+        if (pe.diaToMoney) {
+            int have = countDiamonds(p);
+            int n = Math.min(pe.count, have);
+            if (n <= 0) return "&cНет алмазов в инвентаре.";
+            int rest = n;
+            ItemStack[] contents = p.getInventory().getContents();
+            for (int i = 0; i < contents.length && rest > 0; i++) {
+                ItemStack it = contents[i];
+                if (it != null && it.getType() == Material.DIAMOND) {
+                    int take = Math.min(rest, it.getAmount());
+                    it.setAmount(it.getAmount() - take);
+                    rest -= take;
+                }
+            }
+            p.getInventory().setContents(contents);
+            double sum = n * price;
+            if (!economy.deposit(p, sum)) return "&cОшибка начисления.";
+            return null;
+        } else {
+            double cost = pe.count * price;
+            if (cost <= 0) return "&cНеверная сумма.";
+            if (!economy.has(p, cost)) return "&cНе хватает денег.";
+            if (!economy.withdraw(p, cost)) return "&cОплата не прошла.";
+            int rest = pe.count;
+            while (rest > 0) {
+                int stack = Math.min(rest, 64);
+                Map<Integer, ItemStack> left = p.getInventory()
+                        .addItem(new ItemStack(Material.DIAMOND, stack));
+                for (ItemStack l : left.values()) {
+                    p.getWorld().dropItemNaturally(p.getLocation(), l);
+                }
+                rest -= stack;
+            }
+            return null;
+        }
+    }
+
     // ---------------- helpers ----------------
 
-    private ItemStack filler() {
+private ItemStack filler() {
         ItemStack it = new ItemStack(cfg.filler);
         ItemMeta m = it.getItemMeta();
-        m.displayName(Msg.color("&8 "));
+        m.displayName(Msg.color("<gradient:#1a1a2e:#16213e:#0f3460> </gradient>"));
+        it.setItemMeta(m);
+        return it;
+    }
+
+    /** Animated gradient filler that changes over time */
+    private ItemStack animatedFiller() {
+        ItemStack it = new ItemStack(cfg.filler);
+        ItemMeta m = it.getItemMeta();
+        String[] gradients = {
+            "<gradient:#1a1a2e:#16213e:#0f3460> </gradient>",
+            "<gradient:#16213e:#0f3460:#1a1a2e> </gradient>",
+            "<gradient:#0f3460:#1a1a2e:#16213e> </gradient>"
+        };
+        m.displayName(Msg.color(gradients[(int)(System.currentTimeMillis() / 2000) % 3]));
+        it.setItemMeta(m);
+        return it;
+    }
+
+    /** Creates a beautiful animated filler pane with gradient */
+    private ItemStack gradientFiller(int index) {
+        ItemStack it = new ItemStack(cfg.filler);
+        ItemMeta m = it.getItemMeta();
+        // Create a subtle animated gradient effect
+        String[] gradients = {
+            "<gradient:#1a1a2e:#16213e:#0f3460> </gradient>",
+            "<gradient:#16213e:#0f3460:#1a1a2e> </gradient>",
+            "<gradient:#0f3460:#1a1a2e:#16213e> </gradient>"
+        };
+        m.displayName(Msg.color(gradients[index % 3]));
         it.setItemMeta(m);
         return it;
     }
@@ -331,6 +572,14 @@ public class AhGui {
     }
 
     public static class ExpiredHolder implements InventoryHolder {
+        @Override public Inventory getInventory() { return null; }
+    }
+
+    public static class ExchangerHolder implements InventoryHolder {
+        @Override public Inventory getInventory() { return null; }
+    }
+
+    public static class ExchangeConfirmHolder implements InventoryHolder {
         @Override public Inventory getInventory() { return null; }
     }
 

@@ -38,6 +38,8 @@ public class AhConfig {
     public boolean sounds;
     public String defaultCategory;
     public java.util.Set<String> blockedWorlds = new java.util.HashSet<>();
+    public boolean exchangeEnabled;
+    public double diamondPrice;
 
     public void load(JavaPlugin plugin) {
         plugin.saveDefaultConfig();
@@ -81,6 +83,8 @@ public class AhConfig {
 
         sounds = c.getBoolean("gui.sounds", true);
         defaultCategory = c.getString("gui.default-category", "ALL");
+        exchangeEnabled = c.getBoolean("exchange.enabled", true);
+        diamondPrice = c.getDouble("exchange.diamond-price", 1000.0);
         blockedWorlds.clear();
         for (String w : c.getStringList("listings.blocked-worlds")) {
             blockedWorlds.add(w.toLowerCase(java.util.Locale.ROOT));

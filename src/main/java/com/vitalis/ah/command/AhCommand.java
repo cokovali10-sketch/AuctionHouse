@@ -36,6 +36,7 @@ public class AhCommand implements CommandExecutor, TabCompleter {
         send(p, "&e/ah &7— открыть аукцион");
         send(p, "&e/ah sell <цена> &7— продать предмет в руке");
         send(p, "&e/ah search <текст> &7— найти лоты");
+        send(p, "&e/ah exchange &7— обменник (алмазы ⇄ деньги)");
         send(p, "&7Остальное — кнопками в окне.");
     }
 
@@ -59,6 +60,10 @@ public class AhCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase(Locale.ROOT);
         if (sub.equals("sell")) {
             handleSell(p, args);
+            return true;
+        }
+        if (sub.equals("exchange")) {
+            plugin.gui().openExchanger(p);
             return true;
         }
         if (sub.equals("search")) {
@@ -153,7 +158,7 @@ public class AhCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) {
-            return filter(args[0], List.of("sell", "search"));
+            return filter(args[0], List.of("sell", "search", "exchange"));
         }
         return Collections.emptyList();
     }

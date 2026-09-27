@@ -46,7 +46,9 @@ public class GuiListener implements Listener {
         if (e.getInventory().getHolder() instanceof AhGui.BrowserHolder
                 || e.getInventory().getHolder() instanceof AhGui.CategoriesHolder
                 || e.getInventory().getHolder() instanceof AhGui.ConfirmHolder
-                || e.getInventory().getHolder() instanceof AhGui.ExpiredHolder) {
+                || e.getInventory().getHolder() instanceof AhGui.ExpiredHolder
+                || e.getInventory().getHolder() instanceof AhGui.ExchangerHolder
+                || e.getInventory().getHolder() instanceof AhGui.ExchangeConfirmHolder) {
             e.setCancelled(true);
         }
     }
@@ -66,14 +68,24 @@ public class GuiListener implements Listener {
         } else if (e.getInventory().getHolder() instanceof AhGui.ExpiredHolder) {
             e.setCancelled(true);
             handleExpired(p, e.getRawSlot());
+        } else if (e.getInventory().getHolder() instanceof AhGui.ExchangerHolder) {
+            e.setCancelled(true);
+            handleExchanger(p, e.getRawSlot());
+        } else if (e.getInventory().getHolder() instanceof AhGui.ExchangeConfirmHolder) {
+            e.setCancelled(true);
+            handleExchangeConfirm(p, e.getRawSlot());
         }
     }
 
     @EventHandler
     public void onClose(InventoryCloseEvent e) {
-        if (e.getInventory().getHolder() instanceof AhGui.ConfirmHolder
-                && e.getPlayer() instanceof Player p) {
-            plugin.gui().takeConfirm(p); // discard stale confirm
+        if (e.getPlayer() instanceof Player p) {
+            if (e.getInventory().getHolder() instanceof AhGui.ConfirmHolder) {
+                plugin.gui().takeConfirm(p); // discard stale confirm
+            }
+            if (e.getInventory().getHolder() instanceof AhGui.ExchangeConfirmHolder) {
+                plugin.gui().takeExchange(p); // discard stale exchange
+            }
         }
     }
 
@@ -195,10 +207,108 @@ public class GuiListener implements Listener {
             }
             case 52 -> {
                 clickSound(p);
-                plugin.gui().openBrowser(p, st); // refresh (or admin indicator)
+                plugin.gui().openExchanger(p);
             }
             default -> {}
         }
+    }
+
+    // ---------------- exchanger ----------------
+
+    private void handleExchanger(Player p, int slot) {
+        if (!plugin.cfg().exchangeEnabled) {
+            errorSound(p);
+            p.sendMessage(Msg.color(plugin.cfg().prefix + "&cОбменник выключен."));
+            p.closeInventory();
+            return;
+        }
+        AhGui.State st = plugin.gui().stateOf(p);
+        if (slot == 22) {
+            clickSound(p);
+            plugin.gui().openBrowser(p, st);
+            return;
+        }
+        if (slot == 13) {
+            st.exchangeAmount = AhGui.nextExchangeAmount(st.exchangeAmount);
+            clickSound(p);
+            plugin.gui().openExchanger(p);
+            return;
+        }
+        if (slot != 11 && slot != 15) return;
+        boolean diaToMoney = slot == 11;
+        double price = plugin.cfg().diamondPrice;
+        if (price <= 0) {
+            errorSound(p);
+            p.sendMessage(Msg.color(plugin.cfg().prefix + "&cОбменник выключен."));
+            return;
+        }
+        int n;
+        double total;
+        if (diaToMoney) {
+            int have = plugin.gui().countDiamonds(p);
+            n = st.exchangeAmount < 0 ? have : Math.min(st.exchangeAmount, have);
+            if (n <= 0) {
+                errorSound(p);
+                p.sendMessage(Msg.color(plugin.cfg().prefix + "&cНет алмазов в инвентаре."));
+                return;
+            }
+            total = n * price;
+        } else {
+            double bal;
+            try {
+                bal = plugin.economy().balance(p);
+            } catch (Exception e) {
+                bal = 0;
+            }
+            int afford = (int) (bal / price);
+            n = st.exchangeAmount < 0 ? afford : Math.min(st.exchangeAmount, afford);
+            if (n <= 0) {
+                errorSound(p);
+                p.sendMessage(Msg.color(plugin.cfg().prefix + "&cНе хватает денег."));
+                return;
+            }
+            total = n * price;
+        }
+        clickSound(p);
+        plugin.gui().openExchangeConfirm(p, diaToMoney, n, total);
+    }
+
+    private void handleExchangeConfirm(Player p, int slot) {
+        if (slot == 15) {
+            AhGui.State st = plugin.gui().stateOf(p);
+            plugin.gui().takeExchange(p);
+            clickSound(p);
+            plugin.gui().openExchanger(p);
+            return;
+        }
+        if (slot != 11) return;
+        AhGui.PendingExchange pe = plugin.gui().takeExchange(p);
+        if (pe == null) {
+            p.closeInventory();
+            return;
+        }
+        if (!p.hasPermission("auctionhouse.sell")) {
+            p.sendMessage(Msg.color(plugin.cfg().prefix + "&cНет доступа."));
+            errorSound(p);
+            p.closeInventory();
+            return;
+        }
+        String err = plugin.gui().doExchange(p, pe);
+        if (err != null) {
+            p.sendMessage(Msg.color(plugin.cfg().prefix + err));
+            errorSound(p);
+            p.closeInventory();
+            return;
+        }
+        if (pe.diaToMoney) {
+            p.sendMessage(Msg.color(plugin.cfg().prefix + "&aОбменяно &b" + pe.count
+                    + " &aалм. → &e" + Fmt.money(pe.total, plugin.cfg().symbol)));
+        } else {
+            p.sendMessage(Msg.color(plugin.cfg().prefix + "&aКуплено &b" + pe.count
+                    + " &aалм. за &e" + Fmt.money(pe.total, plugin.cfg().symbol)));
+        }
+        if (plugin.cfg().sounds) p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1f);
+        p.closeInventory();
     }
 
     // ---------------- categories ----------------

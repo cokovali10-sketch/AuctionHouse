@@ -14,6 +14,12 @@ general:
 economy:
   # 10% commission from seller on successful sale
   tax-percent: 10.0
+
+exchange:
+  # exchanger: diamonds <-> money (buttons in /ah + /ah exchange)
+  enabled: true
+  # price of ONE diamond in both directions
+  diamond-price: 1000.0
   # min/max price (with your inflation: diamond ~1000$)
   min-price: 1.0
   max-price: 100000000.0
@@ -37,14 +43,14 @@ listings:
   blocked-worlds: []
 
 gui:
-  title-main: "&8Auction &7- page &e{page}"
-  title-confirm: "&8Confirm purchase"
-  title-mylots: "&8My listings &7({count}/{max})"
-  title-expired: "&8Expired / Storage"
+  title-main: "<gradient:#FFD76A:#7AD9FF>◆ Аукцион ◆</gradient> <gray>стр. {page} • {count} лотов"
+  title-confirm: "<gradient:#7DFF9A:#FFE27A>◆ Сделка ◆</gradient>"
+  title-mylots: "<gradient:#7AD9FF:#FFD76A>◆ Мои лоты ◆</gradient> <gray>{count}/{max}"
+  title-expired: "<gradient:#FFD76A:#7AD9FF>◆ Склад ◆</gradient>"
   # sort modes cycled by button: NEWEST, PRICE_ASC, PRICE_DESC, TIME_LEFT
   default-sort: NEWEST
   # filler glass pane material
-  filler: GRAY_STAINED_GLASS_PANE
+  filler: BLACK_STAINED_GLASS_PANE
   # UI sounds (UI clicks, levelup on buy, villager on sell)
   sounds: true
   # default category filter: ALL, BLOCKS, TOOLS, WEAPONS, ARMOR, FOOD, POTIONS, ENCHANTED, MISC
