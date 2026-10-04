@@ -1,4 +1,4 @@
-# AuctionHouse v1.0.0 - Purpur/Paper 1.21.11
+# AuctionHouse v1.7.1 - Purpur/Paper 1.21.11
 # Economy: Vault + EssentialsX (1 diamond ~ 1000$ on your server)
 general:
   # prefix in chat (supports color codes with &)
@@ -14,17 +14,17 @@ general:
 economy:
   # 10% commission from seller on successful sale
   tax-percent: 10.0
+  # min/max listing price (with your inflation: diamond ~1000$)
+  min-price: 1.0
+  max-price: 100000000.0
+  # currency symbol for GUI/messages
+  symbol: "$"
 
 exchange:
   # exchanger: diamonds <-> money (buttons in /ah + /ah exchange)
   enabled: true
   # price of ONE diamond in both directions
   diamond-price: 1000.0
-  # min/max price (with your inflation: diamond ~1000$)
-  min-price: 1.0
-  max-price: 100000000.0
-  # currency symbol for GUI/messages
-  symbol: "$"
 
 listings:
   # max active listings per player (100 slots as requested)

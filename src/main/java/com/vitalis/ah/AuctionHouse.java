@@ -57,7 +57,9 @@ public class AuctionHouse extends JavaPlugin {
         }
 
         getLogger().info("AuctionHouse enabled: tax=" + cfg.taxPercent + "%, slots=" + cfg.maxPerPlayer
-                + ", duration=" + cfg.durationSeconds + "s, listings=" + storage.allActive().size());
+                + ", duration=" + cfg.durationSeconds + "s, listings=" + storage.allActive().size()
+                + ", exchange=" + (cfg.exchangeEnabled ? ("on (" + cfg.diamondPrice + cfg.symbol + "/diamond)")
+                        : "off"));
     }
 
     @Override
@@ -80,5 +82,12 @@ public class AuctionHouse extends JavaPlugin {
 
     public AhGui gui() {
         return gui;
+    }
+
+    /** /ah reload — re-reads config.yml without restart. */
+    public void reloadPlugin() {
+        cfg.load(this);
+        getLogger().info("Config reloaded: tax=" + cfg.taxPercent + "%, exchange=" + cfg.exchangeEnabled
+                + ", diamond=" + cfg.diamondPrice + ", symbol=" + cfg.symbol);
     }
 }

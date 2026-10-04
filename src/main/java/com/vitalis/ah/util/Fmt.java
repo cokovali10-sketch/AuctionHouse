@@ -16,7 +16,7 @@ public final class Fmt {
     }
 
     public static String timeLeft(long millis) {
-        if (millis <= 0) return "expired";
+        if (millis <= 0) return "истекла";
         long days = TimeUnit.MILLISECONDS.toDays(millis);
         long hours = TimeUnit.MILLISECONDS.toHours(millis) % 24;
         long mins = TimeUnit.MILLISECONDS.toMinutes(millis) % 60;

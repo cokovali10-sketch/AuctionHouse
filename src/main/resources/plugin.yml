@@ -9,8 +9,8 @@ depend: [Vault]
 softdepend: [Essentials, PlaceholderAPI]
 commands:
   ah:
-    description: Auction House - open, sell, search. Everything else is GUI buttons.
-    usage: /ah [sell <price>|search <text>]
+    description: Auction House - open, sell, search, reload. Everything else is GUI buttons.
+    usage: /ah [sell <price>|search <text>|exchange|reload]
     aliases: [auction, auctionhouse, auc]
 permissions:
   auctionhouse.use:
@@ -22,3 +22,9 @@ permissions:
   auctionhouse.search:
     description: Search listings
     default: true
+  auctionhouse.exchange:
+    description: Use the diamond <-> money exchanger
+    default: true
+  auctionhouse.reload:
+    description: Reload AuctionHouse config (/ah reload)
+    default: op

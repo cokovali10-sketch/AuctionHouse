@@ -37,11 +37,34 @@ public class AhCommand implements CommandExecutor, TabCompleter {
         send(p, "&e/ah sell <цена> &7— продать предмет в руке");
         send(p, "&e/ah search <текст> &7— найти лоты");
         send(p, "&e/ah exchange &7— обменник (алмазы ⇄ деньги)");
+        if (p.hasPermission("auctionhouse.reload")) send(p, "&e/ah reload &7— перезагрузить конфиг");
         send(p, "&7Остальное — кнопками в окне.");
+    }
+
+    /** Returns a finite price or null (testable, rejects NaN/Infinity/garbage). */
+    static Double parsePrice(String raw) {
+        if (raw == null || raw.isEmpty()) return null;
+        double v;
+        try {
+            v = Double.parseDouble(raw.replace(",", "."));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        return Double.isFinite(v) ? v : null;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        // /ah reload works from console too (it must: admins reload without joining)
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+            if (!sender.hasPermission("auctionhouse.reload")) {
+                sender.sendMessage(Msg.color(plugin.cfg().prefix + "&cНет доступа."));
+                return true;
+            }
+            plugin.reloadPlugin();
+            sender.sendMessage(Msg.color(plugin.cfg().prefix + "&aКонфиг AuctionHouse перезагружен."));
+            return true;
+        }
         if (!(sender instanceof Player p)) {
             sender.sendMessage("Only players.");
             return true;
@@ -96,13 +119,12 @@ public class AhCommand implements CommandExecutor, TabCompleter {
             send(p, "&eИспользование: &f/ah sell <цена> &7— держи предмет в руке");
             return;
         }
-        double price;
-        try {
-            price = Double.parseDouble(args[1].replace(",", "."));
-        } catch (NumberFormatException e) {
+        Double parsed = parsePrice(args[1]);
+        if (parsed == null) {
             send(p, "&cПлохая цена. Пример: /ah sell 1500");
             return;
         }
+        double price = parsed;
         if (price < plugin.cfg().minPrice || price > plugin.cfg().maxPrice) {
             send(p, "&cЦена должна быть от &e" + Fmt.money(plugin.cfg().minPrice, plugin.cfg().symbol)
                     + " &cдо &e" + Fmt.money(plugin.cfg().maxPrice, plugin.cfg().symbol));
@@ -158,7 +180,7 @@ public class AhCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) {
-            return filter(args[0], List.of("sell", "search", "exchange"));
+            return filter(args[0], List.of("sell", "search", "exchange", "reload"));
         }
         return Collections.emptyList();
     }

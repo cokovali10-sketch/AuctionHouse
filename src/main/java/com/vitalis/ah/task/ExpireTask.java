@@ -31,7 +31,7 @@ public class ExpireTask implements Runnable {
             Player seller = Bukkit.getPlayer(removed.seller);
             if (seller != null && seller.isOnline()) {
                 seller.sendMessage(com.vitalis.ah.util.Msg.color(plugin.cfg().prefix
-                        + "&eListing expired: &f" + removed.displayName + " &7→ claim in &e/ah expired"));
+                        + "&eЛот истёк: &f" + removed.displayName + " &7→ забери на «Складе» в /ah"));
             }
         }
         plugin.storage().saveAsync();

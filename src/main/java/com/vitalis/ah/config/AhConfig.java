@@ -52,9 +52,13 @@ public class AhConfig {
         announceMinPrice = c.getDouble("general.announce-min-price", 0.0);
 
         taxPercent = c.getDouble("economy.tax-percent", 10.0);
-        minPrice = c.getDouble("economy.min-price", 1.0);
-        maxPrice = c.getDouble("economy.max-price", 100000000.0);
-        symbol = c.getString("economy.symbol", "$");
+        // min/max/symbol live under `economy:` in config.yml, older files kept them
+        // under `exchange:` — accept both so upgrades don't silently fall back.
+        minPrice = optDouble(c, "economy.min-price", "exchange.min-price", 1.0);
+        maxPrice = optDouble(c, "economy.max-price", "exchange.max-price", 100000000.0);
+        symbol = c.contains("economy.symbol")
+                ? c.getString("economy.symbol", "$")
+                : c.getString("exchange.symbol", "$");
 
         maxPerPlayer = c.getInt("listings.max-per-player", 100);
         durationSeconds = c.getLong("listings.duration-seconds", 604800L);
@@ -89,5 +93,11 @@ public class AhConfig {
         for (String w : c.getStringList("listings.blocked-worlds")) {
             blockedWorlds.add(w.toLowerCase(java.util.Locale.ROOT));
         }
+    }
+
+    private static double optDouble(FileConfiguration c, String preferred, String legacyPath, double def) {
+        if (c.contains(preferred)) return c.getDouble(preferred);
+        if (c.contains(legacyPath)) return c.getDouble(legacyPath);
+        return def;
     }
 }

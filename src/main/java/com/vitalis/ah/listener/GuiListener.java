@@ -91,7 +91,7 @@ public class GuiListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
-        plugin.gui().cancelSearchInput(e.getPlayer());
+        plugin.gui().cleanup(e.getPlayer().getUniqueId());
     }
 
     /** Chat search input: player clicked the search button, next message = query. */
@@ -102,6 +102,7 @@ public class GuiListener implements Listener {
         e.setCancelled(true);
         String text = PlainTextComponentSerializer.plainText().serialize(e.message()).trim();
         Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!p.isOnline()) return; // logged out while typing the query
             if (text.isEmpty()) {
                 p.sendMessage(Msg.color(plugin.cfg().prefix + "&7Поиск отменён."));
                 return;
@@ -169,7 +170,8 @@ public class GuiListener implements Listener {
                 plugin.gui().openBrowser(p, st);
             }
             case 46 -> {
-                st.mode = AhGui.Mode.MY;
+                // toggle: Мои лоты -> Все лоты, otherwise -> Мои лоты
+                st.mode = st.mode == AhGui.Mode.MY ? AhGui.Mode.ALL : AhGui.Mode.MY;
                 st.page = 0;
                 clickSound(p);
                 plugin.gui().openBrowser(p, st);
@@ -226,6 +228,11 @@ public class GuiListener implements Listener {
         if (slot == 22) {
             clickSound(p);
             plugin.gui().openBrowser(p, st);
+            return;
+        }
+        if (!plugin.economy().ready()) {
+            errorSound(p);
+            p.sendMessage(Msg.color(plugin.cfg().prefix + "&cЭкономика временно недоступна."));
             return;
         }
         if (slot == 13) {
@@ -287,7 +294,7 @@ public class GuiListener implements Listener {
             p.closeInventory();
             return;
         }
-        if (!p.hasPermission("auctionhouse.sell")) {
+        if (!p.hasPermission("auctionhouse.exchange")) {
             p.sendMessage(Msg.color(plugin.cfg().prefix + "&cНет доступа."));
             errorSound(p);
             p.closeInventory();

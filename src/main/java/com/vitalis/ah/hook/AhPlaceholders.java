@@ -44,7 +44,8 @@ public class AhPlaceholders extends PlaceholderExpansion {
             case "active" -> String.valueOf(plugin.storage().allActive().size());
             case "mine" -> String.valueOf(plugin.storage().countBy(p.getUniqueId()));
             case "expired" -> String.valueOf(plugin.storage().vaultSize(p.getUniqueId()));
-            case "slots" -> plugin.storage().countBy(p.getUniqueId()) + "/" + plugin.cfg().maxPerPlayer;
+            case "slots" -> plugin.storage().countBy(p.getUniqueId())
+                    + "/" + com.vitalis.ah.util.Slots.maxFor(p, plugin.cfg().maxPerPlayer);
             default -> null;
         };
     }

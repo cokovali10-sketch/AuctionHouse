@@ -51,11 +51,12 @@ public class AhGui {
         return 64;
     }
 
-    /** Pending exchange confirm: true = diamonds->money. */
+    /** Pending exchange confirm: true = diamonds->money. count/total are
+     *  re-validated (and clamped) right before the exchange is applied. */
     public static class PendingExchange {
         public final boolean diaToMoney;
-        public final int count;
-        public final double total;
+        public int count;
+        public double total;
 
         PendingExchange(boolean diaToMoney, int count, double total) {
             this.diaToMoney = diaToMoney;
@@ -145,6 +146,15 @@ public class AhGui {
         pendingSearch.remove(p.getUniqueId());
     }
 
+    /** Drops every per-player GUI state (called on quit: prevents map leaks). */
+    public void cleanup(UUID player) {
+        states.remove(player);
+        pendingConfirm.remove(player);
+        expiredSlotMap.remove(player);
+        pendingExchange.remove(player);
+        pendingSearch.remove(player);
+    }
+
     // ---------------- browser ----------------
 
     public List<Listing> view(State st, UUID viewer) {
@@ -214,14 +224,17 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
             inv.setItem(i - from, renderListing(list.get(i), p.getUniqueId()));
         }
         // nav row with animated gradient panes
-        ItemStack fill = animatedFiller();
         for (int s = 45; s < 54; s++) inv.setItem(s, animatedFiller());
 
-inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E8E>← Назад</gradient>",
+        inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E8E>← Назад</gradient>",
                 "<gray>Страница " + (st.page + 1) + "/" + pages + "</gray>"));
-        inv.setItem(46, button(Material.ENDER_CHEST, "<gradient:#7AD9FF:#FFD76A>◆ Мои лоты ◆</gradient>",
+        boolean inMy = st.mode == Mode.MY;
+        inv.setItem(46, button(Material.ENDER_CHEST,
+                inMy ? "<gradient:#7DFF9A:#FFE27A>◆ Все лоты ◆</gradient>"
+                     : "<gradient:#7AD9FF:#FFD76A>◆ Мои лоты ◆</gradient>",
                 "<gray>Ваши: <white>" + countMine(p) + "</white><gray>/</gray><white>" + maxSlots + "</white></gray>",
-                "<gray>Баланс: <gold>" + balanceOf(p) + "</gold></gray>", "<gray>Клик — открыть</gray>"));
+                "<gray>Баланс: <gold>" + balanceOf(p) + "</gold></gray>",
+                inMy ? "<gray>Клик — вернуться ко всем лотам</gray>" : "<gray>Клик — открыть</gray>"));
         inv.setItem(47, button(Material.CHEST, "<gradient:#FFA500:#FFD700>◆ Склад ◆</gradient>",
                 "<gray>Забрать: <white>" + storage.vaultSize(p.getUniqueId()) + "</white></gray>",
                 "<gray>Просрочка и снятые лоты</gray>", "<gray>Клик — открыть</gray>"));
@@ -238,11 +251,15 @@ inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E
                 "<gradient:#7AD9FF:#FFD76A>◆ Поиск ◆</gradient>",
                 st.query.isEmpty() ? "<gray>Клик — ввести запрос</gray>" : "<gray>Запрос: <white>" + st.query + "</white></gray>",
                 "<gray>Команда: <white>/ah search <текст></white></gray>"));
-        inv.setItem(52, button(Material.GOLD_INGOT,
-                "<gradient:#FFD700:#FFA500>◆ Обменник ◆</gradient>",
-                "<gray>Алмазы <white>⇄</white> деньги</gray>",
-                "<gray>1 алм = <gold>" + Fmt.money(cfg.diamondPrice, cfg.symbol) + "</gold></gray>",
-                "<gray>Клик — открыть</gray>"));
+        inv.setItem(52, cfg.exchangeEnabled
+                ? button(Material.GOLD_INGOT,
+                    "<gradient:#FFD700:#FFA500>◆ Обменник ◆</gradient>",
+                    "<gray>Алмазы <white>⇄</white> деньги</gray>",
+                    "<gray>1 алм = <gold>" + Fmt.money(cfg.diamondPrice, cfg.symbol) + "</gold></gray>",
+                    "<gray>Клик — открыть</gray>")
+                : button(Material.BARRIER,
+                    "<gradient:#FF6B6B:#FF8E8E>◆ Обменник ◆</gradient>",
+                    "<gray>Временно выключен</gray>"));
         inv.setItem(53, button(Material.LIME_STAINED_GLASS_PANE,
                 "<gradient:#7DFF9A:#7AD9FF>▸ Вперёд ▸</gradient>",
                 "<gray>Страница <white>" + (st.page + 1) + "</white><gray>/</gray><white>" + pages + "</white></gray>"));
@@ -287,8 +304,9 @@ inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E
         // Price with gradient
         lore.add(Msg.color("<gradient:#FFD700:#FFA500>◆ " + Fmt.money(l.price, cfg.symbol) + " монет ◆</gradient>"));
         lore.add(Msg.color("&7Продавец: &f" + l.sellerName));
-        // Time with dynamic color
-        lore.add(Msg.color("&7⏳ До конца: " + Fmt.timeLeft(l.expiresAt - System.currentTimeMillis())));
+        // Time with urgency color: green -> yellow (<6h) -> red (<1h)
+        String timeColor = left <= 3600_000L ? "&c" : (left <= 6 * 3600_000L ? "&e" : "&a");
+        lore.add(Msg.color(timeColor + "⏳ До конца: " + Fmt.timeLeft(left)));
         if (l.enchanted) {
             lore.add(Msg.color("&d✦ Зачаровано &7(" + l.material + ")"));
         }
@@ -302,13 +320,18 @@ inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E
         // Add subtle gradient border effect via lore
         lore.add(Component.empty());
         lore.add(Msg.color("<gradient:#7AD9FF:#FFD76A>────────────────</gradient>"));
-        // Glow effect for own lots and ending-soon items
+        // Glow effect for own lots and ending-soon items (some items reject the
+        // enchant on meta level -> never let that break rendering)
         if (own || left < 3600_000L) {
-            meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
-            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            try {
+                meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+                meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            } catch (IllegalArgumentException ignored) {
+            }
         }
         // Add custom model data for custom textures support
         // meta.setCustomModelData(12345); // Uncomment if using resource pack
+        meta.lore(lore);
         base.setItemMeta(meta);
         return base;
     }
@@ -407,6 +430,10 @@ inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E
     }
 
     public void openExchanger(Player p) {
+        if (!cfg.exchangeEnabled) {
+            p.sendMessage(Msg.color(cfg.prefix + "&cОбменник выключен."));
+            return;
+        }
         State st = stateOf(p);
         Inventory inv = Bukkit.createInventory(new ExchangerHolder(), 27,
                 Msg.color("<gradient:#FFD700:#7AD9FF>◆ Обменник ◆</gradient>"));
@@ -473,13 +500,19 @@ inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E
                 ItemStack it = contents[i];
                 if (it != null && it.getType() == Material.DIAMOND) {
                     int take = Math.min(rest, it.getAmount());
-                    it.setAmount(it.getAmount() - take);
+                    if (take >= it.getAmount()) {
+                        contents[i] = null; // never leave 0-amount stacks behind
+                    } else {
+                        it.setAmount(it.getAmount() - take);
+                    }
                     rest -= take;
                 }
             }
             p.getInventory().setContents(contents);
-            double sum = n * price;
-            if (!economy.deposit(p, sum)) return "&cОшибка начисления.";
+            // player may have dropped diamonds since the confirm screen
+            pe.count = n;
+            pe.total = n * price;
+            if (!economy.deposit(p, pe.total)) return "&cОшибка начисления.";
             return null;
         } else {
             double cost = pe.count * price;
@@ -520,21 +553,6 @@ private ItemStack filler() {
             "<gradient:#0f3460:#1a1a2e:#16213e> </gradient>"
         };
         m.displayName(Msg.color(gradients[(int)(System.currentTimeMillis() / 2000) % 3]));
-        it.setItemMeta(m);
-        return it;
-    }
-
-    /** Creates a beautiful animated filler pane with gradient */
-    private ItemStack gradientFiller(int index) {
-        ItemStack it = new ItemStack(cfg.filler);
-        ItemMeta m = it.getItemMeta();
-        // Create a subtle animated gradient effect
-        String[] gradients = {
-            "<gradient:#1a1a2e:#16213e:#0f3460> </gradient>",
-            "<gradient:#16213e:#0f3460:#1a1a2e> </gradient>",
-            "<gradient:#0f3460:#1a1a2e:#16213e> </gradient>"
-        };
-        m.displayName(Msg.color(gradients[index % 3]));
         it.setItemMeta(m);
         return it;
     }
