@@ -12,7 +12,7 @@ With the pack: full custom window + gold frames, buttons, dividers.
 
 ## Install (local test)
 
-1. Copy `mythic-auction-pack.zip` into your client's `resourcepacks/`.
+1. Copy `auction-gold-pack.zip` into your client's `resourcepacks/`.
 2. Enable it in Options → Resource Packs (put on top).
 3. Open `/ah` — window should have the gold frame.
 
