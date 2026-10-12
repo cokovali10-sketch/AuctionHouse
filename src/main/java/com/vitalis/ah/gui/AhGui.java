@@ -202,14 +202,10 @@ public class AhGui {
         int pages = Math.max(1, (int) Math.ceil(list.size() / (double) PAGE_SIZE));
         st.page = Math.max(0, Math.min(st.page, pages - 1));
 
-int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
-        String title = cfg.titleMain.replace("{page}", (st.page + 1) + "/" + pages)
-                .replace("{count}", String.valueOf(list.size()));
-        if (st.mode == Mode.MY) title = cfg.titleMyLots
-                .replace("{count}", String.valueOf(countMine(p)))
-                .replace("{max}", String.valueOf(maxSlots));
-        if (st.mode == Mode.SEARCH) title = "<gradient:#FFD76A:#7AD9FF>Поиск</gradient> <gray>" + st.query
-                + " <gray>" + (st.page + 1) + "/" + pages;
+        int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
+        String title = AhTheme.titleBrowser(st.page + 1, pages, list.size());
+        if (st.mode == Mode.MY) title = AhTheme.titleMy(countMine(p), maxSlots);
+        if (st.mode == Mode.SEARCH) title = AhTheme.titleSearch(st.query, st.page + 1, pages);
 
         Inventory inv = Bukkit.createInventory(new BrowserHolder(), 54, Msg.color(title));
 
@@ -223,11 +219,14 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
         for (int i = from; i < to; i++) {
             inv.setItem(i - from, renderListing(list.get(i), p.getUniqueId()));
         }
+        if (list.isEmpty()) {
+            inv.setItem(22, st.mode == Mode.SEARCH && !st.query.isEmpty()
+                    ? AhTheme.emptySearch(st.query) : AhTheme.emptyBrowser());
+        }
         // nav row with animated gradient panes
         for (int s = 45; s < 54; s++) inv.setItem(s, animatedFiller());
 
-        inv.setItem(45, button(Material.RED_STAINED_GLASS_PANE, "<gradient:#FF6B6B:#FF8E8E>← Назад</gradient>",
-                "<gray>Страница " + (st.page + 1) + "/" + pages + "</gray>"));
+        inv.setItem(45, AhTheme.navBack(st.page + 1, pages));
         boolean inMy = st.mode == Mode.MY;
         inv.setItem(46, button(Material.ENDER_CHEST,
                 inMy ? "<gradient:#7DFF9A:#FFE27A>◆ Все лоты ◆</gradient>"
@@ -242,8 +241,7 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
                 "<gradient:#7AD9FF:#FFD76A>◆ Сорт: " + sortRu(st.sort) + "◆</gradient>",
                 "<gray>Дальше: <white>" + sortRu(nextSort(st.sort)) + "</white></gray>",
                 "<gray>Клик — сменить</gray>"));
-        inv.setItem(49, button(Material.BARRIER, "<gradient:#FF6B6B:#FF8E8E>◆ Закрыть ◆</gradient>",
-                "<gray>Баланс: <gold>" + balanceOf(p) + "</gold></gray>"));
+        inv.setItem(49, AhTheme.closeButton(balanceOf(p)));
         inv.setItem(50, button(st.category.icon,
                 "<gradient:#7AD9FF:#FFD76A>◆ " + st.category.nameRu + " ◆</gradient>",
                 "<gray>Клик — выбрать категорию</gray>"));
@@ -260,9 +258,7 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
                 : button(Material.BARRIER,
                     "<gradient:#FF6B6B:#FF8E8E>◆ Обменник ◆</gradient>",
                     "<gray>Временно выключен</gray>"));
-        inv.setItem(53, button(Material.LIME_STAINED_GLASS_PANE,
-                "<gradient:#7DFF9A:#7AD9FF>▸ Вперёд ▸</gradient>",
-                "<gray>Страница <white>" + (st.page + 1) + "</white><gray>/</gray><white>" + pages + "</white></gray>"));
+        inv.setItem(53, AhTheme.navForward(st.page + 1, pages));
         p.openInventory(inv);
     }
 
@@ -302,7 +298,12 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
         List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
         lore.add(Component.empty());
         // Price with gradient
-        lore.add(Msg.color("<gradient:#FFD700:#FFA500>◆ " + Fmt.money(l.price, cfg.symbol) + " монет ◆</gradient>"));
+        lore.add(Msg.color(AhTheme.priceLine(l.price, cfg.symbol)));
+        AhTheme.Rarity rarity = AhTheme.rarity(l.price, cfg.rareAt, cfg.epicAt);
+        Component badge = AhTheme.rarityLine(rarity, cfg);
+        if (badge != null) {
+            lore.add(badge);
+        }
         lore.add(Msg.color("&7Продавец: &f" + l.sellerName));
         // Time with urgency color: green -> yellow (<6h) -> red (<1h)
         String timeColor = left <= 3600_000L ? "&c" : (left <= 6 * 3600_000L ? "&e" : "&a");
@@ -319,10 +320,10 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
         }
         // Add subtle gradient border effect via lore
         lore.add(Component.empty());
-        lore.add(Msg.color("<gradient:#7AD9FF:#FFD76A>────────────────</gradient>"));
-        // Glow effect for own lots and ending-soon items (some items reject the
+        lore.add(Msg.color(AhTheme.divider()));
+        // Glow effect for own lots, ending-soon and epic items (some items reject the
         // enchant on meta level -> never let that break rendering)
-        if (own || left < 3600_000L) {
+        if (own || left < 3600_000L || rarity == AhTheme.Rarity.EPIC) {
             try {
                 meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
@@ -359,7 +360,7 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
             }
             inv.setItem(slot++, it);
         }
-        inv.setItem(22, button(Material.ARROW, "&7Назад"));
+        inv.setItem(22, AhTheme.backButton());
         p.openInventory(inv);
     }
 
@@ -397,7 +398,7 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
         }
         ItemStack fill = filler();
         for (int s = 45; s < 54; s++) inv.setItem(s, fill);
-        inv.setItem(49, button(Material.ARROW, "&7Назад"));
+        inv.setItem(49, AhTheme.backButton());
         inv.setItem(53, button(Material.EMERALD_BLOCK, "&a&lЗабрать ВСЁ &7(&e" + items.size() + "&7)", "&7Клик — забрать всё"));
         expiredSlotMap.put(p.getUniqueId(), map);
         p.openInventory(inv);
@@ -462,7 +463,7 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
                 "&7Баланс: &e" + Fmt.money(bal, cfg.symbol),
                 "&7Купишь: &b" + buyN + " &7за &e" + Fmt.money(buySum, cfg.symbol),
                 buyN > 0 ? "&aКлик — далее" : "&cНе хватает денег"));
-        inv.setItem(22, button(Material.ARROW, "&7Назад"));
+        inv.setItem(22, AhTheme.backButton());
         p.openInventory(inv);
     }
 
@@ -536,11 +537,7 @@ int maxSlots = Slots.maxFor(p, cfg.maxPerPlayer);
     // ---------------- helpers ----------------
 
 private ItemStack filler() {
-        ItemStack it = new ItemStack(cfg.filler);
-        ItemMeta m = it.getItemMeta();
-        m.displayName(Msg.color("<gradient:#1a1a2e:#16213e:#0f3460> </gradient>"));
-        it.setItemMeta(m);
-        return it;
+        return AhTheme.filler(cfg);
     }
 
     /** Animated gradient filler that changes over time */

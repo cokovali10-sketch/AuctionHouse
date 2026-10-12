@@ -56,6 +56,11 @@ gui:
   # default category filter: ALL, BLOCKS, TOOLS, WEAPONS, ARMOR, FOOD, POTIONS, ENCHANTED, MISC
   default-category: ALL
 
+style:
+  # rarity tiers by price: RARE badge + EPIC badge with glow
+  rare-at: 10000.0
+  epic-at: 100000.0
+
 storage:
   # YAML file storage: plugins/AuctionHouse/listings.yml (no MySQL needed on Gamely)
   file: listings.yml
