@@ -1,7 +1,25 @@
 # AuctionHouse — dark-fantasy gold resource pack (optional)
 
 Server-side GUI works WITHOUT this pack (Strategy A).
-With the pack (Strategy B assets): gold frames, buttons, dividers.
+With the pack: full custom window + gold frames, buttons, dividers.
+
+## What the pack changes
+
+- `assets/.../generic_54.png` — full window background 256x256: gold frame,
+  dark panels, slot cells at exact vanilla coords, title plate, red nav band.
+  Applies to ALL 6-row menus (auction + chests) — standard tradeoff.
+- `textures/*.png` — generated UI kit (panel, 3 button states, divider).
+
+## Install (local test)
+
+1. Copy `mythic-auction-pack.zip` into your client's `resourcepacks/`.
+2. Enable it in Options → Resource Packs (put on top).
+3. Open `/ah` — window should have the gold frame.
+
+## Install (server)
+
+1. Host the zip at a public URL, set `resource-pack=<url>` in
+   `server.properties` (+ `resource-pack-sha1` recommended).
 
 ## Install
 
