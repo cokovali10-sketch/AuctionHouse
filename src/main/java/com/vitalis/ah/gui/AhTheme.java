@@ -44,7 +44,25 @@ public final class AhTheme {
                 + " <gray>" + page + "/" + pages + "</gray>";
     }
 
-    public static Rarity rarity(double price, double rareAt, double epicAt) {
+    public static String titleCategories() {
+        return GOLD + "◆ Категории ◆" + GOLD_END;
+    }
+
+    public static String titleConfirm() {
+        return GO + "◆ Подтверди покупку ◆" + GOLD_END;
+    }
+
+    public static String titleExpired(int count) {
+        return GOLD + "◆ Склад ◆</gradient> <gray>" + count + "</gray>";
+    }
+
+    public static String titleExchanger() {
+        return GOLD + "◆ Обменник ◆" + GOLD_END;
+    }
+
+    public static String titleExchangeConfirm() {
+        return GOLD + "◆ Подтверди обмен ◆" + GOLD_END;
+    }    public static Rarity rarity(double price, double rareAt, double epicAt) {
         if (price >= epicAt) {
             return Rarity.EPIC;
         }
@@ -62,11 +80,8 @@ public final class AhTheme {
         };
     }
 
-    /** Rarity badge lore line, null for common (keeps common lore short). */
+    /** Rarity badge lore line — always present so every listing differs. */
     public static Component rarityLine(Rarity r, AhConfig cfg) {
-        if (r == Rarity.COMMON) {
-            return null;
-        }
         return Msg.color(rarityLabel(r, cfg));
     }
 

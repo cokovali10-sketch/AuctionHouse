@@ -298,9 +298,7 @@ public class AhGui {
         lore.add(Msg.color(AhTheme.priceLine(l.price, cfg.symbol)));
         AhTheme.Rarity rarity = AhTheme.rarity(l.price, cfg.rareAt, cfg.epicAt);
         Component badge = AhTheme.rarityLine(rarity, cfg);
-        if (badge != null) {
-            lore.add(badge);
-        }
+        lore.add(badge);
         lore.add(Msg.color("&7Продавец: &f" + l.sellerName));
         // Time with urgency color: green -> yellow (<6h) -> red (<1h)
         String timeColor = left <= 3600_000L ? "&c" : (left <= 6 * 3600_000L ? "&e" : "&a");
@@ -338,7 +336,7 @@ public class AhGui {
 
     public void openCategories(Player p) {
         Inventory inv = Bukkit.createInventory(new CategoriesHolder(), 27,
-                Msg.color("<gradient:#FFD76A:#7AD9FF>◆ Категория ◆</gradient>"));
+                Msg.color(AhTheme.titleCategories()));
         ItemStack fill = filler();
         for (int s = 0; s < 27; s++) inv.setItem(s, fill);
         State st = stateOf(p);
@@ -365,7 +363,7 @@ public class AhGui {
 
     public void openConfirm(Player p, Listing l) {
         markConfirm(p, l.id);
-        Inventory inv = Bukkit.createInventory(new ConfirmHolder(), 27, Msg.color(cfg.titleConfirm));
+        Inventory inv = Bukkit.createInventory(new ConfirmHolder(), 27, Msg.color(AhTheme.titleConfirm()));
         ItemStack fill = filler();
         for (int s = 0; s < 27; s++) inv.setItem(s, fill);
         inv.setItem(13, renderListing(l, p.getUniqueId()));
@@ -382,7 +380,7 @@ public class AhGui {
 
     public void openExpired(Player p) {
         List<String> items = storage.peekBase64(p.getUniqueId());
-        Inventory inv = Bukkit.createInventory(new ExpiredHolder(), 54, Msg.color(cfg.titleExpired));
+        Inventory inv = Bukkit.createInventory(new ExpiredHolder(), 54, Msg.color(AhTheme.titleExpired(items.size())));
         List<Integer> map = new ArrayList<>();
         int slot = 0;
         for (String b64 : items) {
@@ -434,7 +432,7 @@ public class AhGui {
         }
         State st = stateOf(p);
         Inventory inv = Bukkit.createInventory(new ExchangerHolder(), 27,
-                Msg.color("<gradient:#FFD700:#7AD9FF>◆ Обменник ◆</gradient>"));
+                Msg.color(AhTheme.titleExchanger()));
         ItemStack fill = filler();
         for (int s = 0; s < 27; s++) inv.setItem(s, fill);
 
@@ -467,7 +465,7 @@ public class AhGui {
     public void openExchangeConfirm(Player p, boolean diaToMoney, int n, double total) {
         markExchange(p, new PendingExchange(diaToMoney, n, total));
         Inventory inv = Bukkit.createInventory(new ExchangeConfirmHolder(), 27,
-                Msg.color("<gradient:#FFD700:#7AD9FF>◆ Подтверди обмен ◆</gradient>"));
+                Msg.color(AhTheme.titleExchangeConfirm()));
         ItemStack fill = filler();
         for (int s = 0; s < 27; s++) inv.setItem(s, fill);
         if (diaToMoney) {
@@ -537,14 +535,14 @@ private ItemStack filler() {
         return AhTheme.filler(cfg);
     }
 
-    /** Animated gradient filler that changes over time */
+    /** Animated GOLD nav-row filler: nav strip reads different from content. */
     private ItemStack animatedFiller() {
-        ItemStack it = new ItemStack(cfg.filler);
+        ItemStack it = new ItemStack(Material.GOLD_NUGGET);
         ItemMeta m = it.getItemMeta();
         String[] gradients = {
-            "<gradient:#1a1a2e:#16213e:#0f3460> </gradient>",
-            "<gradient:#16213e:#0f3460:#1a1a2e> </gradient>",
-            "<gradient:#0f3460:#1a1a2e:#16213e> </gradient>"
+            "<gradient:#FFD700:#7A5C00> </gradient>",
+            "<gradient:#7A5C00:#FFD700> </gradient>",
+            "<gradient:#FFA500:#FFD700> </gradient>"
         };
         m.displayName(Msg.color(gradients[(int)(System.currentTimeMillis() / 2000) % 3]));
         it.setItemMeta(m);

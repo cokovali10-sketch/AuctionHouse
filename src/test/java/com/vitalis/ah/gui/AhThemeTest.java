@@ -19,8 +19,9 @@ class AhThemeTest {
     }
 
     @Test
-    void commonHasNoBadge() {
-        assertNull(AhTheme.rarityLine(AhTheme.Rarity.COMMON, null));
+    void everyTierHasBadge() {
+        // Every listing shows a badge so all lores visibly differ.
+        assertNotNull(AhTheme.rarityLine(AhTheme.Rarity.COMMON, null));
         assertNotNull(AhTheme.rarityLine(AhTheme.Rarity.RARE, null));
         assertNotNull(AhTheme.rarityLine(AhTheme.Rarity.EPIC, null));
     }
