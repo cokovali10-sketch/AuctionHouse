@@ -79,9 +79,9 @@ public final class AhTheme {
     }
 
     public static ItemStack navBack(int page, int pages) {
-        return button(Material.RED_STAINED_GLASS_PANE,
+        return withModel(button(Material.ARROW,
                 DANGER + "← Назад" + GOLD_END,
-                "<gray>Страница " + page + "/" + pages + "</gray>");
+                "<gray>Страница " + page + "/" + pages + "</gray>"), "ah_back");
     }
 
     public static ItemStack navForward(int page, int pages) {
@@ -91,12 +91,37 @@ public final class AhTheme {
     }
 
     public static ItemStack closeButton(String balance) {
-        return button(Material.BARRIER, DANGER + "◆ Закрыть ◆" + GOLD_END,
-                "<gray>Баланс: <gold>" + balance + "</gold></gray>");
+        return withModel(button(Material.BARRIER, DANGER + "◆ Закрыть ◆" + GOLD_END,
+                "<gray>Баланс: <gold>" + balance + "</gold></gray>"), "ah_close");
     }
 
     public static ItemStack backButton() {
-        return button(Material.ARROW, "&7Назад");
+        return withModel(button(Material.ARROW, "&7Назад"), "ah_back");
+    }
+
+    public static ItemStack searchButton(String query) {
+        return withModel(button(Material.COMPASS,
+                INFO + "◆ Поиск ◆" + GOLD_END,
+                query.isEmpty() ? "<gray>Клик — ввести запрос</gray>"
+                        : "<gray>Запрос: <white>" + query + "</white></gray>",
+                "<gray>Команда: <white>/ah search <текст></white></gray>"), "ah_search");
+    }
+
+    /** Tags a custom_model_data string so the resource pack swaps the icon.
+     *  Never throws: pack-less players simply see the vanilla item. */
+    public static ItemStack withModel(ItemStack it, String key) {
+        if (key == null) {
+            return it;
+        }
+        try {
+            ItemMeta m = it.getItemMeta();
+            var comp = m.getCustomModelDataComponent();
+            comp.setStrings(java.util.List.of(key));
+            m.setCustomModelDataComponent(comp);
+            it.setItemMeta(m);
+        } catch (Exception ignored) {
+        }
+        return it;
     }
 
     public static ItemStack emptyBrowser() {

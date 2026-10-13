@@ -245,10 +245,7 @@ public class AhGui {
         inv.setItem(50, button(st.category.icon,
                 "<gradient:#7AD9FF:#FFD76A>◆ " + st.category.nameRu + " ◆</gradient>",
                 "<gray>Клик — выбрать категорию</gray>"));
-        inv.setItem(51, button(Material.COMPASS,
-                "<gradient:#7AD9FF:#FFD76A>◆ Поиск ◆</gradient>",
-                st.query.isEmpty() ? "<gray>Клик — ввести запрос</gray>" : "<gray>Запрос: <white>" + st.query + "</white></gray>",
-                "<gray>Команда: <white>/ah search <текст></white></gray>"));
+        inv.setItem(51, AhTheme.searchButton(st.query));
         inv.setItem(52, cfg.exchangeEnabled
                 ? button(Material.GOLD_INGOT,
                     "<gradient:#FFD700:#FFA500>◆ Обменник ◆</gradient>",
