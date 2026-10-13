@@ -60,6 +60,7 @@ public class AuctionHouse extends JavaPlugin {
                 + ", duration=" + cfg.durationSeconds + "s, listings=" + storage.allActive().size()
                 + ", exchange=" + (cfg.exchangeEnabled ? ("on (" + cfg.diamondPrice + cfg.symbol + "/diamond)")
                         : "off"));
+        getLogger().info("AuctionHouse UI: AhTheme dark-fantasy/gold active (build 2).");
     }
 
     @Override
