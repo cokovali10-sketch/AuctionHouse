@@ -10,8 +10,9 @@ public final class Fmt {
 
     public static String money(double v, String symbol) {
         NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
-        nf.setMaximumFractionDigits(2);
+        nf.setMaximumFractionDigits(0);
         nf.setMinimumFractionDigits(0);
+        nf.setRoundingMode(java.math.RoundingMode.HALF_UP);
         return nf.format(v) + symbol;
     }
 

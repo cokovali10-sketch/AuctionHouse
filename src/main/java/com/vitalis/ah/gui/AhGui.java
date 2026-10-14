@@ -216,8 +216,9 @@ public class AhGui {
 
         int from = st.page * PAGE_SIZE;
         int to = Math.min(from + PAGE_SIZE, list.size());
+        Map<String, double[]> market = marketAverages();
         for (int i = from; i < to; i++) {
-            inv.setItem(i - from, renderListing(list.get(i), p.getUniqueId()));
+            inv.setItem(i - from, renderListing(list.get(i), p.getUniqueId(), market));
         }
         if (list.isEmpty()) {
             inv.setItem(22, st.mode == Mode.SEARCH && !st.query.isEmpty()
@@ -281,7 +282,34 @@ public class AhGui {
         return storage.countBy(p.getUniqueId());
     }
 
+    /**
+     * Average UNIT price per material over all active listings.
+     * Computed once per GUI open (never in a hot loop).
+     * Map: material -> [sumUnitPrice, count].
+     */
+    Map<String, double[]> marketAverages() {
+        Map<String, double[]> acc = new HashMap<>();
+        long now = System.currentTimeMillis();
+        for (Listing o : storage.allActive()) {
+            if (o.expired(now)) continue;
+            int amt = 1;
+            try {
+                amt = Math.max(1, ItemSer.fromBase64(o.itemBase64).getAmount());
+            } catch (Exception ignored) {
+            }
+            if (o.price < 0) continue;
+            double[] a = acc.computeIfAbsent(o.material, k -> new double[2]);
+            a[0] += o.price / amt;
+            a[1]++;
+        }
+        return acc;
+    }
+
     private ItemStack renderListing(Listing l, UUID viewer) {
+        return renderListing(l, viewer, marketAverages());
+    }
+
+    private ItemStack renderListing(Listing l, UUID viewer, Map<String, double[]> market) {
         ItemStack base;
         try {
             base = ItemSer.fromBase64(l.itemBase64).clone();
@@ -299,6 +327,20 @@ public class AhGui {
         AhTheme.Rarity rarity = AhTheme.rarity(l.price, cfg.rareAt, cfg.epicAt);
         Component badge = AhTheme.rarityLine(rarity, cfg);
         lore.add(badge);
+        // Market average hint: unit price vs same-material listings
+        double[] avg = market != null ? market.get(l.material) : null;
+        if (avg != null && avg[1] >= 2) {
+            double mean = avg[0] / avg[1];
+            int amt = Math.max(1, base.getAmount());
+            double unit = l.price / amt;
+            lore.add(Msg.color("&7Средняя по рынку: &e" + Fmt.money(mean, cfg.symbol)
+                    + "&7/шт &8(" + (int) avg[1] + ")"));
+            if (unit <= mean * 0.95) {
+                lore.add(Msg.color("&a▼ ниже рынка!"));
+            } else if (unit >= mean * 1.05) {
+                lore.add(Msg.color("&c▲ выше рынка"));
+            }
+        }
         lore.add(Msg.color("&7Продавец: &f" + l.sellerName));
         // Time with urgency color: green -> yellow (<6h) -> red (<1h)
         String timeColor = left <= 3600_000L ? "&c" : (left <= 6 * 3600_000L ? "&e" : "&a");
