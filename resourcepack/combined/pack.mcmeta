@@ -1,0 +1,43 @@
+{
+  "pack": {
+    "pack_format": 75,
+    "description": [
+      {
+        "translate": "stellarity.resource_pack",
+        "fallback": "Required resources for Stellarity",
+        "color": "#CB4BFF"
+      },
+      " ",
+      {
+        "text": "\u2b50",
+        "color": "gold"
+      }
+    ],
+    "min_format": 75,
+    "max_format": 75
+  },
+  "overlays": {
+    "entries": [
+      {
+        "directory": "overlay_assets_1_21_11",
+        "min_format": 75,
+        "max_format": 75
+      },
+      {
+        "directory": "overlay_assets_26_1",
+        "min_format": 84,
+        "max_format": 84
+      },
+      {
+        "directory": "overlay_assets_26_2",
+        "min_format": 88,
+        "max_format": 88
+      },
+      {
+        "directory": "overlay_assets_26_3",
+        "min_format": 97,
+        "max_format": 97
+      }
+    ]
+  }
+}

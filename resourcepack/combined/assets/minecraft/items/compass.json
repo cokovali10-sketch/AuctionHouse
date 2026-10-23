@@ -1,0 +1,19 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:custom_model_data",
+    "cases": [
+      {
+        "when": "ah_search",
+        "model": {
+          "type": "minecraft:model",
+          "model": "mythicauction:item/search"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "minecraft:item/compass"
+    }
+  }
+}
