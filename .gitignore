@@ -8,3 +8,7 @@ out/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Python bytecode
+__pycache__/
+*.py[cod]
