@@ -1,3 +1,9 @@
+<div align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f172a,50:38bdf8,100:a78bfa&height=160&section=header&text=AuctionHouse&fontSize=48&fontColor=ffffff&fontAlignY=38&animation=fadeIn" alt="header" />
+
+</div>
+
 # AuctionHouse
 
 GUI-аукцион для Paper/Purpur 1.21.11. Три команды, всё остальное — кнопками в окне.
